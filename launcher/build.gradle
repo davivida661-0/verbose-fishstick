@@ -1,0 +1,38 @@
+// ---------------------------------------------------------------------------
+// :launcher - launcher standalone do Solar Client
+//   - login Microsoft (OAuth device code) / Mojang legado / offline
+//   - download do Minecraft 1.8.9 + libraries + OptiFine
+//   - bootstrap do Mixin (TransformingClassLoader) e execucao do jogo
+// ---------------------------------------------------------------------------
+plugins {
+    id 'java'
+}
+
+application {
+    mainClass = 'com.solarclient.launcher.Launcher'
+}
+
+archivesBaseName = 'solar-client-launcher'
+
+dependencies {
+    implementation "com.google.code.gson:gson:${rootProject.gsonVersion}"
+    // Mixin e ASM: o launcher so usa para registrar as configuracoes e
+    // transformar as classes do jogo (TransformingClassLoader).
+    compileOnly "org.spongepowered:mixin:${rootProject.mixinVersion}"
+    // ASM e explicito porque a assinatura de IMixinTransformer.transformClass
+    // referencia ClassNode - sem isso o javac nao acha a classe.
+    compileOnly "org.ow2.asm:asm:9.2"
+    compileOnly "org.ow2.asm:asm-tree:9.2"
+}
+
+jar {
+    archiveFileName = "${archivesBaseName}-${rootProject.modVersion}.jar"
+    manifest {
+        attributes('Main-Class': 'com.solarclient.launcher.Launcher')
+    }
+}
+
+// Roda o launcher com as mesmas libs do Gradle: ./gradlew :launcher:run
+run {
+    standardInput = System.in
+}

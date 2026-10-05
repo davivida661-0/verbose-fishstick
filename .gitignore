@@ -1,0 +1,33 @@
+# Gradle / Java
+build/
+out/
+.gradle/
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Minecraft decompilado / mappings (nao versionar)
+client/libs/*.jar
+client/run/
+launcher/profiles/
+launcher/cache/
+
+# API (banco local do servidor de cosmeticos)
+api/data/
+api/*.db
+data/
+*.db
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# Ferramentas de verificacao local (geradas por tools/verify/verify.sh)
+tools/verify/lib/
+tools/verify/out*/
+tools/verify/stubs/
+tools/verify/sources*.txt

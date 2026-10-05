@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
+  <title>Solar Client</title>
+  <style>
+    :root {
+      --bg: #0b0c12;
+      --panel: #111320;
+      --outline: #262b3d;
+      --text: #f2f4f8;
+      --muted: #9aa1b1;
+      --accent: #7c5cff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(1200px 600px at 50% -10%, #191c2e 0%, var(--bg) 60%);
+      color: var(--text);
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      overflow: hidden;
+    }
+    .titlebar {
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      -webkit-app-region: drag;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      padding: 0 12px;
+    }
+    .brand { font-weight: 700; letter-spacing: .08em; }
+    .brand span { color: var(--accent); }
+    .win { -webkit-app-region: no-drag; display: flex; gap: 8px; }
+    .win button {
+      background: transparent; border: 0; color: var(--muted);
+      font-size: 14px; cursor: pointer; padding: 4px 8px; border-radius: 6px;
+    }
+    .win button:hover { background: rgba(255,255,255,.06); color: var(--text); }
+    main { padding: 28px 32px; display: grid; gap: 18px; }
+    h1 { margin: 0; font-size: 26px; }
+    p.sub { margin: 0; color: var(--muted); font-size: 14px; }
+    .card {
+      background: var(--panel); border: 1px solid var(--outline);
+      border-radius: 14px; padding: 20px; display: grid; gap: 14px;
+    }
+    label { font-size: 13px; color: var(--muted); display: grid; gap: 6px; }
+    input[type="text"] {
+      background: #0e1019; border: 1px solid var(--outline); color: var(--text);
+      border-radius: 10px; padding: 10px 12px; font-size: 14px; outline: none;
+    }
+    input[type="text"]:focus { border-color: var(--accent); }
+    .row { display: flex; gap: 18px; flex-wrap: wrap; }
+    .check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text); }
+    button.primary {
+      background: var(--accent); color: #0b0c12; border: 0; border-radius: 10px;
+      padding: 12px 18px; font-weight: 700; cursor: pointer; font-size: 15px;
+      transition: transform .12s ease, filter .12s ease;
+    }
+    button.primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    button.primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+    #log {
+      height: 150px; overflow: auto; background: #0a0b12; border: 1px solid var(--outline);
+      border-radius: 10px; padding: 10px 12px; font-family: ui-monospace, Menlo, monospace;
+      font-size: 12px; color: var(--muted); white-space: pre-wrap;
+    }
+    .note { color: var(--muted); font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="titlebar">
+    <div class="brand">SOLAR <span>CLIENT</span></div>
+    <div class="win">
+      <button onclick="windowApi.minimize()">-</button>
+      <button onclick="windowApi.maximize()">□</button>
+      <button onclick="windowApi.close()">×</button>
+    </div>
+  </div>
+
+  <main>
+    <div>
+      <h1>Launcher</h1>
+      <p class="sub">Minecraft 1.8.9 + OptiFine + Solar Client (sem Forge, via Mixin).</p>
+    </div>
+
+    <div class="card">
+      <label>
+        Usuario
+        <input id="username" type="text" value="Player" autocomplete="off" />
+      </label>
+      <div class="row">
+        <label class="check"><input id="online" type="checkbox" /> Login Microsoft (device code)</label>
+        <label class="check"><input id="optifine" type="checkbox" checked /> Usar OptiFine</label>
+      </div>
+      <button id="play" class="primary">Jogar</button>
+      <p class="note">
+        O modo offline entra com o nome digitado. O login Microsoft precisa de
+        <code>microsoftClientId</code> em <code>gradle.properties</code>.
+      </p>
+    </div>
+
+    <div class="card">
+      <div id="log">pronto.</div>
+    </div>
+  </main>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
