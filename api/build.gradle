@@ -1,0 +1,35 @@
+// ---------------------------------------------------------------------------
+// :api - API REST de cosmeticos (Node zero: com.sun.net.httpserver + SQLite)
+//   GET  /v1/cosmetics/catalog          -> catalogo completo
+//   GET  /v1/cosmetics/owned?uuid=...   -> cosmeticos do jogador
+//   GET  /v1/cosmetics/loadout?uuid=... -> o que esta equipado
+//   POST /v1/loadout                    -> salva o equipado
+// Documentacao completa em docs/API-COSMETICS.md
+// ---------------------------------------------------------------------------
+plugins {
+    id 'java'
+}
+
+application {
+    mainClass = 'com.solarclient.api.CosmeticsApiServer'
+}
+
+archivesBaseName = 'solar-client-api'
+
+dependencies {
+    implementation "com.google.code.gson:gson:${rootProject.gsonVersion}"
+    implementation "org.xerial:sqlite-jdbc:${rootProject.sqliteVersion}"
+    // Driver HTTP embutido no JDK 8 -> zero dependencia de framework web.
+}
+
+jar {
+    archiveFileName = "${archivesBaseName}-${rootProject.modVersion}.jar"
+    manifest {
+        attributes('Main-Class': 'com.solarclient.api.CosmeticsApiServer')
+    }
+}
+
+run {
+    // Porta padrao da API
+    systemProperty 'solar.api.port', project.findProperty('apiPort') ?: '8787'
+}

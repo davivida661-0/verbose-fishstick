@@ -1,0 +1,14 @@
+{
+  "name": "solar-client-launcher-shell",
+  "version": "0.1.0",
+  "description": "Casca visual (Electron) do launcher do Solar Client",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --user Dev"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0"
+  }
+}

@@ -1,0 +1,43 @@
+name: Verify
+
+# Roda a verificacao do projeto em cada PR e push.
+#
+# O que ela cobre (e o que NAO cobre, veja README):
+#   - sintaxe de todos os .java
+#   - compilacao de :client, :launcher e :api contra stubs da API 1.8.9
+#   - registro de mixins (solar.mixins.json x classes declaradas)
+#   - gradle.properties (chaves usadas pelos .gradle existem)
+#
+# O :client NAO e compilado contra o jar real do Minecraft aqui: o jar nao pode
+# ser redistribuido. Ver "Limitacoes conhecidas" no README.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Java 17 (compila com --release 8)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Node (gera os stubs e roda os checks de arquivo)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Verificacao completa
+        run: sh tools/verify/verify.sh
+
+      - name: Sintaxe de todos os .java
+        run: java tools/verify/SyntaxCheck.java client/src/main/java launcher/src/main/java api/src/main/java
+
+      - name: Imports nao usados
+        run: node tools/verify/unused-imports.js client/src/main/java launcher/src/main/java api/src/main/java

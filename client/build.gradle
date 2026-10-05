@@ -1,0 +1,43 @@
+// ---------------------------------------------------------------------------
+// :client - o mod (Java 8, Mixin, Minecraft 1.8.9 decompilado/mapeado)
+// ---------------------------------------------------------------------------
+plugins {
+    id 'java'
+}
+
+archivesBaseName = 'solar-client'
+
+dependencies {
+    // Minecraft 1.8.9 decompilado com nomes MCP (NUNCA entra no jar final do
+    // launcher: e apenas a "API" de compilacao). Geracao em docs/BUILD.md.
+    compileOnly files(rootProject.file("client/${rootProject.minecraftMappedJar}"))
+
+    // Mixin: sistema de injecao usado em TODO o client.
+    // O annotation processor gera o solar.refmap.json (obrigatorio: sem ele o
+    // Mixin roda em dev e quebra em producao) e precisa do Guava no classpath.
+    compileOnly "org.spongepowered:mixin:${rootProject.mixinVersion}:processor"
+    compileOnly "org.spongepowered:mixin:${rootProject.mixinVersion}"
+    compileOnly "com.google.guava:guava:${rootProject.guavaVersion}"
+
+    // Gson: leitura/escrita do config JSON e parse da API de cosmeticos.
+    implementation "com.google.code.gson:gson:${rootProject.gsonVersion}"
+
+    // LWJGL 2 e as libraries do proprio Minecraft (compileOnly = ja existem em runtime).
+    compileOnly "org.lwjgl.lwjgl:lwjgl:${rootProject.lwjglVersion}"
+    compileOnly "org.lwjgl.lwjgl:lwjgl_util:${rootProject.lwjglVersion}"
+    compileOnly 'org.apache.logging.log4j:log4j-api:2.8.2'
+    compileOnly 'org.apache.logging.log4j:log4j-core:2.8.2'
+}
+
+processResources {
+    // Nao expande o mixins.json de proposito: o nome das classes aninhadas usa "$"
+    // e seria corrompido pelo expand() do Groovy.
+    filesMatching('solar.mixins.json') {
+        filter { it }
+    }
+}
+
+jar {
+    archiveFileName = "${archivesBaseName}-${rootProject.modVersion}.jar"
+    // O mod e um jar comum, iniciado pelo launcher (nao por Forge).
+}

@@ -1,0 +1,11 @@
+// ---------------------------------------------------------------------------
+// Solar Client - build multi-modulo
+//   :client   -> o mod em si (Java 8 + Mixin + Minecraft 1.8.9 decompilado)
+//   :launcher -> launcher standalone (auth Microsoft + download + bootstrap Mixin)
+//   :api      -> API REST de sincronizacao de cosmeticos
+// ---------------------------------------------------------------------------
+rootProject.name = 'solar-client'
+
+include 'client'
+include 'launcher'
+include 'api'
