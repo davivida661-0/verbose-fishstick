@@ -133,6 +133,10 @@ curl -sSO https://repo1.maven.org/maven2/org/xerial/sqlite-jdbc/3.42.0.0/sqlite-
 curl -sSO https://repo1.maven.org/maven2/org/slf4j/slf4j-api/1.7.36/slf4j-api-1.7.36.jar
 curl -sSO https://repo1.maven.org/maven2/org/ow2/asm/asm/9.2/asm-9.2.jar
 curl -sSO https://repo1.maven.org/maven2/org/ow2/asm/asm-tree/9.2/asm-tree-9.2.jar
+curl -sSO https://repo1.maven.org/maven2/org/ow2/asm/asm-util/9.2/asm-util-9.2.jar
+curl -sSO https://repo1.maven.org/maven2/org/ow2/asm/asm-commons/9.2/asm-commons-9.2.jar
+curl -sSO https://repo1.maven.org/maven2/org/ow2/asm/asm-analysis/9.2/asm-analysis-9.2.jar
+curl -sSO https://repo1.maven.org/maven2/com/google/guava/guava/31.1-jre/guava-31.1-jre.jar
 # o Mixin 0.8.5 esta no repo do SpongePowered (nao no Maven Central):
 curl -sSO https://repo.spongepowered.org/repository/maven-public/org/spongepowered/mixin/0.8.5/mixin-0.8.5.jar
 cd ../..
@@ -154,6 +158,33 @@ curl 'localhost:8787/v1/cosmetics/loadout?uuid=1a2b3c4d-0000-4000-8000-000000000
 
 Isso **foi executado** e passou (ver o README, seção "Verificações").
 
+### Empacotando os jars sem Gradle
+
+O repositório não traz o `gradle-wrapper.jar` (é binário) e muita máquina não
+tem Gradle instalado. Para `:launcher` e `:api` — que **não** dependem do jar do
+Minecraft — dá para empacotar com `javac` + `jar`:
+
+```bash
+sh tools/verify/build-launcher-jar.sh
+# -> build/dist/solar-client-launcher-0.1.0.jar
+# -> build/dist/solar-client-api-0.1.0.jar
+```
+
+São "uber jars" (as libs dentro), então rodam com `java -jar` sem `-cp`. Três
+cuidados que o script já aplica e que são fáceis de esquecer:
+
+1. **`META-INF/*.SF|.DSA|.RSA` são removidos.** As libs são assinadas e, depois
+   de reempacotar, o digest não bate mais — o JVM morre com
+   `SecurityException: Invalid signature file digest for Manifest main attributes`.
+2. **`src/main/resources` é copiado por último.** O Mixin traz o próprio
+   `META-INF/services/...IMixinService`, apontando para LaunchWrapper e
+   ModLauncher; se ele for copiado depois, ele sobrescreve o registro do projeto
+   e o Mixin volta a procurar o Forge.
+3. O `asm-util` precisa ser baixado (não vem por padrão na lista antiga).
+
+O `:client` **não** sai por esse caminho: ele precisa do
+`minecraft-1.8.9-mapped.jar` (seção 2).
+
 ### Sobre a versão do Mixin
 
 O launcher usa a API do **Mixin 0.8.5** (`org.spongepowered.asm.launch.MixinBootstrap`
@@ -164,6 +195,73 @@ bootstrap e a interface do transformer em
 
 O annotation processor do Mixin (que gera o `solar.refmap.json`) precisa do
 Guava no classpath de compilação - ele já está declarado em `client/build.gradle`.
+
+### Rodar o Mixin sem Forge: os três serviços que o launcher registra
+
+Este é o ponto mais traiçoeiro do projeto, porque **nada disso dá erro de
+compilação** — só quebra na hora de subir o jogo.
+
+O Mixin não funciona sozinho. Quando `MixinBootstrap.init()` roda, ele procura
+um `IMixinService` por `ServiceLoader`, e o jar oficial do Mixin 0.8.5 só traz
+registro para dois hospedeiros:
+
+| Serviço | Quem implementa | Funciona aqui? |
+|---|---|---|
+| `IMixinService` | `MixinServiceLaunchWrapperBootstrap` (Forge) | **não** |
+| `IMixinService` | `MixinServiceModLauncherBootstrap` (Fabric) | **não** |
+| `IGlobalPropertyService` | LaunchWrapper / ModLauncher | **não** |
+
+Num setup sem Forge e sem Fabric, `init()` estoura:
+
+```
+org.spongepowered.asm.service.ServiceNotAvailableError:
+    No mixin host service is available.
+```
+
+Por isso o launcher carrega os registros dele em
+`launcher/src/main/resources/META-INF/services/`:
+
+* `org.spongepowered.asm.service.IMixinService` → `SolarMixinService`
+  (implementa os providers mínimo; a transformação de verdade continua no
+  `TransformingClassLoader`);
+* `org.spongepowered.asm.service.IGlobalPropertyService` → `SolarPropertyService`
+  (as propriedades globais do Mixin).
+
+E ainda falta uma terceira peça: **quem cria o `MixinTransformer`.** No Forge é
+o `Proxy` do próprio Mixin — mas essa classe implementa
+`net.minecraft.launchwrapper.IClassTransformer`, então nem carrega sem o Forge:
+
+```
+java.lang.NoClassDefFoundError: net/minecraft/launchwrapper/IClassTransformer
+```
+
+O launcher contorna chamando a `MixinTransformer$Factory` (package-private) por
+reflexão, em `MixinBootstrapper.ensureTransformer()`. Dois detalhes que só
+aparecem em execução:
+
+* **tem que ser depois do `addConfiguration`** — o construtor do
+  `MixinTransformer` lê a lista de alvos das configs na hora em que é criado. Se
+  ele nascer antes, guarda uma lista vazia para sempre e nenhuma classe é
+  transformada, **sem erro nenhum**;
+* **`getActiveTransformer()` devolve `null` até isso acontecer** — o
+  `TransformingClassLoader` checa isso e cai silenciosamente nos bytes
+  originais quando é `null`.
+
+As libs de ASM (`asm`, `asm-tree`, `asm-util`, `asm-commons`, `asm-analysis`)
+precisam estar no classpath **de runtime**: o verificador do Mixin usa
+`org.objectweb.asm.util.CheckClassAdapter`, e sem o `asm-util` o launcher
+quebra com `NoClassDefFoundError`.
+
+Para conferir que o ambiente subiu (não depende do jar do Minecraft):
+
+```bash
+sh tools/verify/build-launcher-jar.sh
+mkdir -p build/smoke
+javac -encoding UTF-8 -cp build/dist/solar-client-launcher-0.1.0.jar \
+      -d build/smoke tools/verify/Smoke.java
+java -cp build/dist/solar-client-launcher-0.1.0.jar:build/smoke Smoke
+# esperado: SMOKE_OK
+```
 
 ---
 

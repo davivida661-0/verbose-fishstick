@@ -16,13 +16,28 @@ archivesBaseName = 'solar-client-launcher'
 
 dependencies {
     implementation "com.google.code.gson:gson:${rootProject.gsonVersion}"
-    // Mixin e ASM: o launcher so usa para registrar as configuracoes e
-    // transformar as classes do jogo (TransformingClassLoader).
-    compileOnly "org.spongepowered:mixin:${rootProject.mixinVersion}"
-    // ASM e explicito porque a assinatura de IMixinTransformer.transformClass
-    // referencia ClassNode - sem isso o javac nao acha a classe.
-    compileOnly "org.ow2.asm:asm:9.2"
-    compileOnly "org.ow2.asm:asm-tree:9.2"
+
+    // ASM sao necessarias em COMPILACAO porque a assinatura de
+    // IMixinTransformer.transformClass referencia ClassNode (asm-tree), e em
+    // RUNTIME porque o Mixin carrega o verificador (asm-util) na hora de
+    // validar as classes transformadas. Sem asm-util o launcher quebra com
+    // NoClassDefFoundError: org/objectweb/asm/util/CheckClassAdapter.
+    compileOnly "org.ow2.asm:asm:${rootProject.asmVersion}"
+    compileOnly "org.ow2.asm:asm-tree:${rootProject.asmVersion}"
+    compileOnly "org.ow2.asm:asm-util:${rootProject.asmVersion}"
+    compileOnly "org.ow2.asm:asm-commons:${rootProject.asmVersion}"
+    compileOnly "org.ow2.asm:asm-analysis:${rootProject.asmVersion}"
+
+    // Mixin e Guava: em runtime porque o launcher SOBE o ambiente do Mixin
+    // (sem Forge nem Fabric, entao o proprio launcher e o hospedeiro - ver
+    // SolarMixinService). Guava e dependencia do proprio Mixin.
+    runtimeOnly "org.spongepowered:mixin:${rootProject.mixinVersion}"
+    runtimeOnly "com.google.guava:guava:${rootProject.guavaVersion}"
+    runtimeOnly "org.ow2.asm:asm:${rootProject.asmVersion}"
+    runtimeOnly "org.ow2.asm:asm-tree:${rootProject.asmVersion}"
+    runtimeOnly "org.ow2.asm:asm-util:${rootProject.asmVersion}"
+    runtimeOnly "org.ow2.asm:asm-commons:${rootProject.asmVersion}"
+    runtimeOnly "org.ow2.asm:asm-analysis:${rootProject.asmVersion}"
 }
 
 jar {
