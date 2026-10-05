@@ -104,10 +104,15 @@ public class CallbackInfoReturnable<T> { public void setReturnValue(T v){} publi
 // --- Mixin 0.8.5 (espelha a API real, verificada contra o jar oficial) ---
 w('org.spongepowered.asm.launch', 'MixinBootstrap', `public abstract class MixinBootstrap { public static void init(){} }`);
 w('org.spongepowered.asm.mixin', 'MixinEnvironment', `
+import org.spongepowered.asm.launch.platform.container.IContainerHandle;
+import org.spongepowered.asm.mixin.transformer.IMixinTransformer;
 public final class MixinEnvironment {
+  public enum Phase { PREINIT, INIT, DEFAULT, POSTINIT }
   private static final MixinEnvironment CURRENT = new MixinEnvironment();
   public static MixinEnvironment getCurrentEnvironment(){return CURRENT;}
   public Object getActiveTransformer(){return null;}
+  public void setActiveTransformer(IMixinTransformer t){}
+  public IContainerHandle getPrimaryContainer(){return null;}
 }`);
 w('org.spongepowered.asm.mixin', 'Mixins', `
 public final class Mixins {
@@ -117,6 +122,124 @@ public final class Mixins {
 w('org.spongepowered.asm.mixin.transformer', 'IMixinTransformer', `
 import org.spongepowered.asm.mixin.MixinEnvironment;
 public interface IMixinTransformer { byte[] transformClass(MixinEnvironment env, String name, byte[] input); }`);
+
+// --- servico do Mixin (necessario para rodar SEM Forge) ---
+// ClassNode e do asm-tree: o verify.sh compila so com gson, entao o stub
+// tambem precisa ser local (a assinatura real de transformClass referencia
+// ClassNode, por isso o asm precisa estar no classpath de compilacao).
+w('org.objectweb.asm.tree', 'ClassNode', `public class ClassNode {}`);
+w('org.objectweb.asm', 'ClassReader', `
+import org.objectweb.asm.tree.ClassNode;
+public class ClassReader {
+  public ClassReader(byte[] b){}
+  public void accept(ClassNode node, int flags){}
+}`);
+w('org.spongepowered.asm.launch.platform.container', 'IContainerHandle', `
+import java.util.Collection;
+public interface IContainerHandle {
+  String getAttribute(String name);
+  Collection<IContainerHandle> getNestedContainers();
+}`);
+w('org.spongepowered.asm.launch.platform.container', 'ContainerHandleVirtual', `
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+public class ContainerHandleVirtual implements IContainerHandle {
+  private final String name;
+  private final List<IContainerHandle> nested = new ArrayList<IContainerHandle>();
+  public ContainerHandleVirtual(String name){ this.name = name; }
+  public String getName(){ return name; }
+  public ContainerHandleVirtual add(IContainerHandle c){ nested.add(c); return this; }
+  public String getAttribute(String n){ return null; }
+  public Collection<IContainerHandle> getNestedContainers(){ return nested; }
+}`);
+w('org.spongepowered.asm.service', 'IMixinInternal', `public interface IMixinInternal {}`);
+w('org.spongepowered.asm.service', 'IClassProvider', `
+import java.net.URL;
+public interface IClassProvider {
+  URL[] getClassPath();
+  Class<?> findClass(String name) throws ClassNotFoundException;
+  Class<?> findClass(String name, boolean initialize) throws ClassNotFoundException;
+  Class<?> findAgentClass(String name, boolean remap) throws ClassNotFoundException;
+}`);
+w('org.spongepowered.asm.service', 'IClassBytecodeProvider', `
+import org.objectweb.asm.tree.ClassNode;
+public interface IClassBytecodeProvider {
+  ClassNode getClassNode(String name) throws ClassNotFoundException, java.io.IOException;
+  ClassNode getClassNode(String name, boolean remap) throws ClassNotFoundException, java.io.IOException;
+}`);
+w('org.spongepowered.asm.service', 'ITransformer', `public interface ITransformer {}`);
+w('org.spongepowered.asm.service', 'ITransformerProvider', `
+import java.util.Collection;
+public interface ITransformerProvider {
+  Collection<ITransformer> getTransformers();
+  Collection<ITransformer> getDelegatedTransformers();
+  void addTransformerExclusion(String target);
+}`);
+w('org.spongepowered.asm.service', 'IClassTracker', `
+public interface IClassTracker {
+  void registerInvalidClass(String className);
+  boolean isClassLoaded(String className);
+  String getClassRestrictions(String className);
+}`);
+w('org.spongepowered.asm.service', 'IMixinAuditTrail', `
+public interface IMixinAuditTrail {
+  void onApply(String targetClassName, String mixinClassName);
+  void onPostProcess(String className);
+  void onGenerate(String className, String sourceClass);
+}`);
+w('org.spongepowered.asm.service', 'IPropertyKey', `public interface IPropertyKey {}`);
+w('org.spongepowered.asm.service', 'IGlobalPropertyService', `
+public interface IGlobalPropertyService {
+  IPropertyKey resolveKey(String name);
+  <T> T getProperty(IPropertyKey key);
+  <T> T getProperty(IPropertyKey key, T defaultValue);
+  void setProperty(IPropertyKey key, Object value);
+  String getPropertyString(IPropertyKey key, String defaultValue);
+}`);
+w('org.spongepowered.asm.service', 'IMixinService', `
+import java.io.InputStream;
+import java.util.Collection;
+import org.spongepowered.asm.launch.platform.container.IContainerHandle;
+import org.spongepowered.asm.mixin.MixinEnvironment;
+public interface IMixinService {
+  String getName();
+  boolean isValid();
+  MixinEnvironment.Phase getInitialPhase();
+  void offer(IMixinInternal internal);
+  void init();
+  void beginPhase();
+  void checkEnv(Object obj);
+  Object getReEntranceLock();
+  IClassProvider getClassProvider();
+  IClassBytecodeProvider getBytecodeProvider();
+  ITransformerProvider getTransformerProvider();
+  IClassTracker getClassTracker();
+  IMixinAuditTrail getAuditTrail();
+  Collection<String> getPlatformAgents();
+  IContainerHandle getPrimaryContainer();
+  Collection<IContainerHandle> getMixinContainers();
+  InputStream getResourceAsStream(String name);
+  String getSideName();
+  Object getLogger(String name);
+}`);
+w('org.spongepowered.asm.service', 'MixinServiceAbstract', `
+import java.io.InputStream;
+import java.util.Collection;
+import org.spongepowered.asm.launch.platform.container.IContainerHandle;
+import org.spongepowered.asm.mixin.MixinEnvironment;
+public abstract class MixinServiceAbstract implements IMixinService {
+  public void prepare(){}
+  public MixinEnvironment.Phase getInitialPhase(){ return MixinEnvironment.Phase.PREINIT; }
+  public void offer(IMixinInternal internal){}
+  public void init(){}
+  public void beginPhase(){}
+  public void checkEnv(Object obj){}
+  public Object getReEntranceLock(){ return null; }
+  public Collection<IContainerHandle> getMixinContainers(){ return java.util.Collections.emptyList(); }
+  public String getSideName(){ return "UNKNOWN"; }
+  public Object getLogger(String name){ return null; }
+}`);
 
 // ---------------------------------------------------------------- Minecraft
 w(MC + 'util', 'IChatComponent', `public interface IChatComponent { String getUnformattedText(); String getFormattedText(); }`);

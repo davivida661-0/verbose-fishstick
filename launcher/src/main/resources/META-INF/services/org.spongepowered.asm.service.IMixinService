@@ -1,0 +1,8 @@
+# Registro do servico do Mixin (Java ServiceLoader).
+#
+# O Mixin procura um IMixinService por este arquivo. Sem ele (e sem Forge ou
+# Fabric no classpath) o MixinBootstrap.init() falha com:
+#   ServiceNotAvailableError: No mixin host service is available.
+#
+# Ver SolarMixinService.java para o porque de o projeto ter o seu proprio.
+com.solarclient.launcher.mixin.SolarMixinService

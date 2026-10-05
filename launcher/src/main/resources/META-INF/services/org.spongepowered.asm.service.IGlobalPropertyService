@@ -1,0 +1,8 @@
+# Registro do servico de propriedades globais do Mixin (Java ServiceLoader).
+#
+# O jar oficial do Mixin nao traz implementacao: no Forge ela vem do
+# LaunchWrapper. Sem esta linha o MixinBootstrap.init() falha com:
+#   ServiceNotAvailableError: No mixin global property service is available
+#
+# Ver SolarPropertyService.java.
+com.solarclient.launcher.mixin.SolarPropertyService
